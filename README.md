@@ -534,7 +534,7 @@ The script will:
 
 ---
 
-## 🧠 SMART MULTI-TARGET SCRIPT
+## 🧠 SMART MULTI-TARGET SCRIPT (CONCEPT)
 
 Here’s the full code:
 
