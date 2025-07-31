@@ -1,85 +1,112 @@
-import requests
-import datetime
-import os
+import requests, os, shutil
+from datetime import datetime, timezone
+from pathlib import Path
 
-# --- CONFIGURE YOUR LIMITS BELOW ---
-LIMITS = [
-    {"type": "domain", "target": "youtube.com", "limit_minutes": 120, "app": "chrome.exe"},
-    {"type": "domain", "target": "roblox.com", "limit_minutes": 60, "app": "chrome.exe"},
-    {"type": "domain", "target": "minecraft.com", "limit_minutes": 60, "app": "chrome.exe"},
-    {"type": "app", "target": "roblox.exe", "limit_minutes": 30},
-    {"type": "app", "target": "minecraft.exe", "limit_minutes": 60}
-]
-# ------------------------------------
+# --- CONFIGURATION ---
+APP_LIMITS = {
+    "chrome.exe": 900,
+    "minecraft.exe": 30,
+    "roblox.exe": 30,
+}
 
-base_url = 'http://localhost:5600/api/0'
-now = datetime.datetime.now()
-start_time = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-end_time = now.isoformat()
+WEB_DOMAIN_LIMITS = {
+    "youtube.com": 60,
+    "roblox.com": 30,
+    "minecraft.com": 30,
+}
+
+HOSTS_PATH = r"C:\Windows\System32\drivers\etc\hosts"
+BACKUP_HOSTS_PATH = HOSTS_PATH + ".backup"
+
+BASE_URL = "http://localhost:5600/api/0"
+WINDOW_BUCKET_PREFIX = "aw-watcher-window"
+WEB_BUCKET_PREFIX = "aw-watcher-web-chrome"
+# ----------------------
 
 def get_buckets():
-    try:
-        r = requests.get(f"{base_url}/buckets")
-        return r.json()
-    except Exception as e:
-        print("❌ Could not connect to ActivityWatch. Is it running?")
-        exit(1)
-
-def get_events(bucket_id):
-    r = requests.get(f"{base_url}/buckets/{bucket_id}/events",
-                     params={'start': start_time, 'end': end_time})
+    r = requests.get(f"{BASE_URL}/buckets"); r.raise_for_status()
     return r.json()
 
-def calculate_domain_usage(domain):
-    buckets = get_buckets()
-    web_bucket = next((v for k, v in buckets.items() if 'aw-watcher-web' in k), None)
-    if not web_bucket:
-        print("⚠️ No web tracking data found.")
-        return 0
+def get_events(bucket_id, start, end):
+    r = requests.get(f"{BASE_URL}/buckets/{bucket_id}/events", params={"start":start.isoformat(),"end":end.isoformat()})
+    r.raise_for_status()
+    return r.json()
 
-    events = get_events(web_bucket['id'])
-    total = 0
-    for i in range(len(events) - 1):
-        url = events[i]['data'].get('url', '')
-        if domain in url:
-            t1 = datetime.datetime.fromisoformat(events[i]['timestamp'])
-            t2 = datetime.datetime.fromisoformat(events[i + 1]['timestamp'])
-            total += (t2 - t1).total_seconds()
-    return total
+def calculate_app_usage(events, app):
+    return sum(ev.get("duration",0) for ev in events if ev.get("data",{}).get("app","").lower()==app.lower())/60
 
-def calculate_app_usage(app_name):
-    buckets = get_buckets()
-    app_bucket = next((v for k, v in buckets.items() if 'aw-watcher-window' in k), None)
-    if not app_bucket:
-        print("⚠️ No app tracking data found.")
-        return 0
+def calculate_domain_usage(events, domain):
+    tot=0
+    for ev in events:
+        d=ev.get("data",{})
+        if domain.lower() in (d.get("url","")+d.get("title","")).lower():
+            tot+=ev.get("duration",0)
+    return tot/60
 
-    events = get_events(app_bucket['id'])
-    total = 0
-    for i in range(len(events) - 1):
-        app = events[i]['data'].get('app', '')
-        if app.lower() == app_name.lower():
-            t1 = datetime.datetime.fromisoformat(events[i]['timestamp'])
-            t2 = datetime.datetime.fromisoformat(events[i + 1]['timestamp'])
-            total += (t2 - t1).total_seconds()
-    return total
+def find_bucket(buckets,prefix):
+    return next((b for b in buckets if b.startswith(prefix)), None)
 
-# --- MAIN LOGIC ---
-for limit in LIMITS:
-    target = limit["target"]
-    limit_sec = limit["limit_minutes"] * 60
+def ensure_host_backup():
+    if not Path(BACKUP_HOSTS_PATH).exists():
+        shutil.copy(HOSTS_PATH,BACKUP_HOSTS_PATH)
 
-    if limit["type"] == "domain":
-        used = calculate_domain_usage(target)
-    elif limit["type"] == "app":
-        used = calculate_app_usage(target)
-    else:
-        continue  # invalid type, skip
+def block_domains():
+    with open(HOSTS_PATH,'r+') as f:
+        lines = f.readlines()
+        f.seek(0)
+        f.writelines(lines)
+        for domain in WEB_DOMAIN_LIMITS:
+            if any(domain in line for line in lines):
+                continue
+            f.write(f"127.0.0.1 {domain}\n127.0.0.1 www.{domain}\n")
+        f.truncate()
 
-    used_min = used / 60
-    print(f"⏱ {target}: {used_min:.1f} / {limit['limit_minutes']} minutes used")
+def restore_hosts():
+    if Path(BACKUP_HOSTS_PATH).exists():
+        shutil.copy(BACKUP_HOSTS_PATH, HOSTS_PATH)
 
-    if used > limit_sec:
-        app_to_kill = limit.get("app", target)  # fallback to app name if not specified
-        os.system(f"taskkill /f /im {app_to_kill}")
-        print(f"🚫 Closed {app_to_kill} — daily limit exceeded!")
+def auto_close_app(app):
+    os.system(f"taskkill /f /im {app}")
+
+def main():
+    ensure_host_backup()
+    now = datetime.now(timezone.utc)
+    start = datetime(year=now.year,month=now.month,day=now.day,tzinfo=timezone.utc)
+    buckets=get_buckets()
+
+    wb=find_bucket(buckets,WINDOW_BUCKET_PREFIX)
+    vb=find_bucket(buckets,WEB_BUCKET_PREFIX)
+    if not wb or not vb:
+        print("Missing watchers."); return
+
+    wevents = get_events(wb,start,now)
+    wevweb = get_events(vb,start,now)
+
+    # Track flags if domains exceed limits
+    domain_block_needed = False
+
+    # Check apps
+    for app,limit in APP_LIMITS.items():
+        usage=calculate_app_usage(wevents,app)
+        print(f"{app}: {usage:.1f}/{limit} min")
+        if usage>limit:
+            auto_close_app(app)
+
+    # Check domains
+    for dom,limit in WEB_DOMAIN_LIMITS.items():
+        usage=calculate_domain_usage(wevweb,dom)
+        print(f"{dom}: {usage:.1f}/{limit} min")
+        if usage>limit:
+            domain_block_needed=True
+
+    if domain_block_needed:
+        print("Blocking domains...")
+        block_domains()
+
+    # Reset at midnight: if now is within first minute of day
+    if now.hour==0 and now.minute==0:
+        print("Resetting hosts file for new day...")
+        restore_hosts()
+
+if __name__=="__main__":
+    main()
