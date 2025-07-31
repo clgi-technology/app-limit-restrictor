@@ -364,3 +364,309 @@ Or you can mix: limit total browser usage (`chrome.exe`) instead of specific dom
 
 Would you like me to generate a version that limits **total Chrome usage**, not just YouTube? Or want a version that handles **multiple apps** with separate limits?
 
+Great — you have **Python 3.13.3** installed and working. That’s perfect!
+
+Let’s proceed with finalizing your **YouTube (or app) time limiter setup**.
+
+---
+
+## ✅ Next Steps Checklist
+
+You’ve already completed:
+
+* ✅ Installed Python ✔
+* ✅ Installed ActivityWatch + Web Extension ✔
+* ✅ Verified Python is working ✔
+
+Now let’s **run the Python script** and test it before automating it.
+
+---
+
+## 🧪 Step-by-Step: Test the Script
+
+### 1. **Create the Script File**
+
+1. Open a text editor like **Notepad**, **VS Code**, or **Notepad++**.
+2. Copy this Python script (YouTube limiter):
+
+```python
+import requests
+import datetime
+import os
+
+# ---- CONFIGURATION ----
+TARGET_APP = "chrome.exe"  # Change this if limiting another app
+LIMIT_SECONDS = 2 * 60 * 60  # 2 hours in seconds
+TARGET_DOMAIN = "youtube.com"  # Set to None to limit full browser usage
+# ------------------------
+
+base_url = 'http://localhost:5600/api/0'
+
+try:
+    buckets = requests.get(f'{base_url}/buckets').json()
+    web_bucket = next(b for b in buckets if 'aw-watcher-web' in b['id'])
+except Exception as e:
+    print("❌ ERROR: Cannot connect to ActivityWatch. Is it running?")
+    exit(1)
+
+now = datetime.datetime.now()
+start_time = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+end_time = now.isoformat()
+
+events = requests.get(
+    f'{base_url}/buckets/{web_bucket["id"]}/events',
+    params={'start': start_time, 'end': end_time}
+).json()
+
+total_seconds = 0
+for i in range(len(events) - 1):
+    url = events[i]['data'].get('url', '')
+    if TARGET_DOMAIN is None or TARGET_DOMAIN in url:
+        t1 = datetime.datetime.fromisoformat(events[i]['timestamp'])
+        t2 = datetime.datetime.fromisoformat(events[i + 1]['timestamp'])
+        total_seconds += (t2 - t1).total_seconds()
+
+if total_seconds > LIMIT_SECONDS:
+    os.system(f"taskkill /f /im {TARGET_APP}")
+    print(f"✅ Closed {TARGET_APP} after {total_seconds/60:.1f} minutes on {TARGET_DOMAIN}")
+else:
+    print(f"⏱ {TARGET_DOMAIN or 'App'} usage today: {total_seconds/60:.1f} minutes")
+```
+
+3. Save it as:
+
+```plaintext
+C:\Users\<YourUsername>\youtube_limiter.py
+```
+
+Replace `<YourUsername>` with your actual Windows user name.
+
+---
+
+### 2. **Make Sure ActivityWatch is Running**
+
+* It should auto-start with Windows. If not, run it from:
+
+  ```
+  C:\Users\<YourUsername>\AppData\Local\Programs\ActivityWatch\activitywatch.exe
+  ```
+
+* Check that it’s running by visiting:
+
+  ```
+  http://localhost:5600
+  ```
+
+You should see the ActivityWatch dashboard.
+
+---
+
+### 3. **Run the Script Manually (Test It)**
+
+Open Git Bash or Command Prompt, and run:
+
+```bash
+python "C:/Users/<YourUsername>/youtube_limiter.py"
+```
+
+You should see output like:
+
+```bash
+⏱ youtube.com usage today: 54.7 minutes
+```
+
+or, if limit is passed:
+
+```bash
+✅ Closed chrome.exe after 128.3 minutes on youtube.com
+```
+
+---
+
+## 🎯 Optional Next Steps
+
+Would you like help with one of the following?
+
+1. **Make it run every 30 minutes automatically** via Task Scheduler
+2. **Limit full Chrome usage**, not just YouTube
+3. **Apply time limits to multiple apps or websites**
+4. **Turn it into a system tray tool with a UI** (advanced)
+
+Let me know how you'd like to continue!
+
+Perfect — you want to apply **daily time limits to multiple apps or websites**, like:
+
+* YouTube → 2 hours/day
+* Discord → 1 hour/day
+* Games → 90 minutes/day
+* Or limit **total Chrome/Firefox time**, regardless of site
+
+We’ll upgrade your script to handle **multiple entries**, each with its own limit.
+
+---
+
+## ✅ MULTI-LIMIT SCRIPT OVERVIEW
+
+You’ll define a list like this:
+
+```python
+LIMITS = [
+    {"type": "domain", "target": "youtube.com", "limit_minutes": 120, "app": "chrome.exe"},
+    {"type": "domain", "target": "discord.com", "limit_minutes": 60, "app": "chrome.exe"},
+    {"type": "app",    "target": "notepad.exe", "limit_minutes": 30},
+    {"type": "app",    "target": "discord.exe", "limit_minutes": 60}
+]
+```
+
+The script will:
+
+* Pull usage data from ActivityWatch
+* Add up today's usage for each target
+* Close the relevant app if time exceeds the limit
+
+---
+
+## 🧠 PREREQUISITES (RECAP)
+
+* ✅ \[x] ActivityWatch running (with web extension enabled for browser tracking)
+* ✅ \[x] Python installed
+* ✅ \[x] Know app names (like `chrome.exe`, `notepad.exe`, etc.)
+
+---
+
+## 🧠 SMART MULTI-TARGET SCRIPT
+
+Here’s the full code:
+
+```python
+import requests
+import datetime
+import os
+
+# --- CONFIGURE YOUR LIMITS HERE ---
+LIMITS = [
+    {"type": "domain", "target": "youtube.com", "limit_minutes": 120, "app": "chrome.exe"},
+    {"type": "domain", "target": "discord.com", "limit_minutes": 60, "app": "chrome.exe"},
+    {"type": "app", "target": "notepad.exe", "limit_minutes": 30},
+    {"type": "app", "target": "discord.exe", "limit_minutes": 60}
+]
+# -----------------------------------
+
+base_url = 'http://localhost:5600/api/0'
+now = datetime.datetime.now()
+start_time = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+end_time = now.isoformat()
+
+def get_buckets():
+    try:
+        return requests.get(f"{base_url}/buckets").json()
+    except Exception as e:
+        print("❌ Could not connect to ActivityWatch. Is it running?")
+        exit(1)
+
+def get_events(bucket_id):
+    r = requests.get(f"{base_url}/buckets/{bucket_id}/events",
+                     params={'start': start_time, 'end': end_time})
+    return r.json()
+
+def calculate_domain_usage(domain):
+    buckets = get_buckets()
+    web_bucket = next((b for b in buckets if 'aw-watcher-web' in b['id']), None)
+    if not web_bucket:
+        return 0
+
+    events = get_events(web_bucket['id'])
+    total = 0
+    for i in range(len(events) - 1):
+        url = events[i]['data'].get('url', '')
+        if domain in url:
+            t1 = datetime.datetime.fromisoformat(events[i]['timestamp'])
+            t2 = datetime.datetime.fromisoformat(events[i + 1]['timestamp'])
+            total += (t2 - t1).total_seconds()
+    return total
+
+def calculate_app_usage(app_name):
+    buckets = get_buckets()
+    app_bucket = next((b for b in buckets if 'aw-watcher-window' in b['id']), None)
+    if not app_bucket:
+        return 0
+
+    events = get_events(app_bucket['id'])
+    total = 0
+    for i in range(len(events) - 1):
+        title = events[i]['data'].get('app', '')
+        if title.lower() == app_name.lower():
+            t1 = datetime.datetime.fromisoformat(events[i]['timestamp'])
+            t2 = datetime.datetime.fromisoformat(events[i + 1]['timestamp'])
+            total += (t2 - t1).total_seconds()
+    return total
+
+# Main logic
+for limit in LIMITS:
+    target = limit["target"]
+    limit_sec = limit["limit_minutes"] * 60
+
+    if limit["type"] == "domain":
+        used = calculate_domain_usage(target)
+    elif limit["type"] == "app":
+        used = calculate_app_usage(target)
+    else:
+        continue
+
+    used_min = used / 60
+    print(f"⏱ {target}: {used_min:.1f}/{limit['limit_minutes']} minutes")
+
+    if used > limit_sec:
+        app_to_kill = limit.get("app", target)
+        os.system(f"taskkill /f /im {app_to_kill}")
+        print(f"✅ Closed {app_to_kill} — over daily limit ({used_min:.1f} min)")
+
+```
+
+---
+
+## 🔧 How to Use This Script
+
+1. Save the script as:
+
+```plaintext
+multi_limiter.py
+```
+
+2. Edit the `LIMITS` list:
+
+   * Set websites under `"type": "domain"`
+   * Set direct apps under `"type": "app"`
+   * Use `limit_minutes` to control each limit
+   * `app` is optional unless the domain needs to be tied to a specific program (e.g., `chrome.exe`)
+
+---
+
+## 🔁 Automate It (Optional)
+
+Use **Task Scheduler** to run:
+
+```bash
+python "C:\Path\To\multi_limiter.py"
+```
+
+* Run at login or every 30 minutes
+
+---
+
+## ✅ Example Use Cases
+
+| Limit                      | Setup                                                                                    |
+| -------------------------- | ---------------------------------------------------------------------------------------- |
+| Limit YouTube to 2 hrs/day | `{"type": "domain", "target": "youtube.com", "limit_minutes": 120, "app": "chrome.exe"}` |
+| Limit Discord desktop app  | `{"type": "app", "target": "discord.exe", "limit_minutes": 60}`                          |
+| Limit Chrome entirely      | `{"type": "app", "target": "chrome.exe", "limit_minutes": 180}`                          |
+| Limit Steam to 90 minutes  | `{"type": "app", "target": "steam.exe", "limit_minutes": 90}`                            |
+
+---
+
+Would you like help with:
+
+* Saving + testing this script now?
+* Adding a specific app or site to the `LIMITS` list?
+* Setting it up to run automatically?
