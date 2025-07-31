@@ -670,3 +670,96 @@ Would you like help with:
 * Saving + testing this script now?
 * Adding a specific app or site to the `LIMITS` list?
 * Setting it up to run automatically?
+
+Yes — you can absolutely run the script **24/7** (or at regular intervals) using **Windows Task Scheduler**, which is built into Windows.
+
+This lets the script:
+
+* Track app and website usage continuously
+* Automatically block sites like `youtube.com` via `hosts` file when limits are reached
+* Optionally unblock them at midnight (daily reset)
+
+---
+
+### ✅ Here’s how to set it up:
+
+#### 1. **Save your Python script**
+
+Make sure it includes logic to:
+
+* Track time
+* Modify the `hosts` file when needed
+* (Optional) Reset daily usage counters
+
+Example name: `C:\Users\melba\Documents\activitywatch_blocker.py`
+
+---
+
+#### 2. **Create a `.bat` launcher script**
+
+This helps Task Scheduler run the Python script reliably.
+
+Example `launch_blocker.bat`:
+
+```bat
+@echo off
+cd C:\Users\melba\Documents
+python activitywatch_blocker.py
+```
+
+---
+
+#### 3. **Schedule the script**
+
+Open **Task Scheduler** and follow these steps:
+
+##### ➤ General Tab:
+
+* Name: `ActivityWatch Limiter`
+* Select: **"Run with highest privileges"** (important for editing `hosts` file)
+* Choose: "Run whether user is logged in or not"
+
+##### ➤ Triggers Tab:
+
+* Add: **Repeat task every 5 minutes**, indefinitely
+
+##### ➤ Actions Tab:
+
+* Action: **Start a program**
+* Program/script: `C:\Users\melba\Documents\launch_blocker.bat`
+
+##### ➤ Conditions & Settings:
+
+* Uncheck "Start task only if on AC power" if you want it to run always
+* Enable “Allow task to be run on demand” for testing
+
+---
+
+#### 4. **Run it manually once to test**
+
+* Right-click the task → “Run”
+* Check `hosts` file or console output
+* Confirm it's working properly
+
+---
+
+### 🔄 Daily Reset Option
+
+You can also schedule a **separate task at midnight** to:
+
+* Clear time logs (optional)
+* Restore original `hosts` file (to unblock all sites)
+
+I can include that logic in the script if you want.
+
+---
+
+### ✅ Next Step:
+
+Would you like the full script updated to:
+
+* Modify `hosts` file for blocking/unblocking
+* Track usage limits
+* Be ready for Task Scheduler?
+
+Just confirm and I’ll post it.
