@@ -945,4 +945,76 @@ python "%~dp0activitywatch_blocker.py"
 
 ---
 
+Got it! To run your Python script periodically with Windows Task Scheduler using a `.bat` file, here’s a step-by-step guide along with an example `.bat` script to create the scheduled task.
+
+---
+
+### 1. Create a `.bat` file to run your Python script
+
+Create a file named, for example, `run_usage_limiter.bat` with the following content:
+
+```bat
+@echo off
+REM Adjust python path if needed
+SET PYTHON_PATH=C:\Path\To\Python\python.exe
+SET SCRIPT_PATH=C:\Path\To\Your\script.py
+
+REM Run the python script
+"%PYTHON_PATH%" "%SCRIPT_PATH%"
+```
+
+* Replace `C:\Path\To\Python\python.exe` with the full path to your Python interpreter.
+* Replace `C:\Path\To\Your\script.py` with the full path to your Python script.
+
+---
+
+### 2. Create a Task Scheduler task via another `.bat` file or PowerShell
+
+You can automate the task creation with a `.bat` file like this:
+
+Create a file named `create_task.bat` with:
+
+```bat
+@echo off
+REM Replace the paths below
+SET TASK_NAME=UsageLimiter
+SET SCRIPT_BAT_PATH=C:\Path\To\run_usage_limiter.bat
+
+REM Create a task to run every 5 minutes starting now
+schtasks /create /sc minute /mo 5 /tn "%TASK_NAME%" /tr "\"%SCRIPT_BAT_PATH%\"" /rl highest /f
+
+echo Task created: %TASK_NAME%
+pause
+```
+
+* Replace `C:\Path\To\run_usage_limiter.bat` with your actual `.bat` file path.
+* `/rl highest` runs the task with highest privileges (admin) which is required for hosts file and killing apps.
+* `/mo 5` means every 5 minutes; change it to whatever interval you want (1, 10, etc.).
+
+---
+
+### 3. Run `create_task.bat` as Administrator
+
+* Right-click the `create_task.bat` file and select **Run as administrator** to register the scheduled task.
+* You should see “Task created: UsageLimiter” and then the task will be scheduled.
+
+---
+
+### 4. Verify in Task Scheduler
+
+* Open **Task Scheduler** (`taskschd.msc`)
+* Find the task named **UsageLimiter**
+* Check triggers, actions, and run conditions
+* You can run the task manually to test
+
+---
+
+### Summary
+
+* Your python script is wrapped in `run_usage_limiter.bat` to run with the proper Python interpreter.
+* `create_task.bat` registers the scheduled task to run every X minutes with admin rights.
+* Modify paths and intervals as needed.
+
+---
+
 
