@@ -97,7 +97,6 @@ Yes, it is **possible** to automatically **close Chrome** **only if YouTube** (n
 * Tracks time spent on websites (e.g., `youtube.com`) if the browser plugin is installed.
 * Install extensions:
 
-  * [ActivityWatch WebWatch Chrome Extension](https://chromewebstore.google.com/detail/activitywatch-webwatch/bpmibdpdmilmhdoogocmfcpmoapdffcb)
   * [ActivityWatch WebWatch Chrome Extension](https://chromewebstore.google.com/detail/nglaklhklhcoonedhgnpgddginnjdadi?utm_source=item-share-cb)
 
 ### 2. **Python Script**
