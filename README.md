@@ -1,3 +1,88 @@
+**ActivityWatch** is a free, open-source, privacy-focused tool that **monitors how you spend your time on your computer**, including tracking which apps you use, for how long, and when.
+
+---
+
+## 🧠 What ActivityWatch Does
+
+| Feature                  | Description                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| **App Usage Tracking**   | Tracks how long each app/window is active (e.g., Chrome, Word, Discord).                   |
+| **Website Tracking**     | Tracks visited websites (in supported browsers like Chrome, Firefox).                      |
+| **Idle Detection**       | Detects when you're not actively using the computer.                                       |
+| **Cross-Platform**       | Works on **Windows, macOS, and Linux**.                                                    |
+| **Local-Only**           | All data stays on your device — **no cloud sync** unless you set it up yourself.           |
+| **Custom Timers & Tags** | Manually tag your time or create custom "buckets" for activities (e.g., "Work", "Gaming"). |
+
+---
+
+## 🔧 How to Use ActivityWatch
+
+### 1. **Install It**
+
+* Download from: [https://activitywatch.net](https://activitywatch.net)
+* Choose your OS → Install
+
+### 2. **Run It**
+
+* It runs in the background.
+* You’ll access it via a browser (usually at `http://localhost:5600`)
+
+### 3. **Check Stats**
+
+* View graphs of:
+
+  * Time spent per app
+  * Websites visited
+  * Activity by hour
+  * Time categories (if tagged)
+
+---
+
+## 📉 Can It Limit App Usage?
+
+**By default: No**, ActivityWatch only tracks — it doesn’t block or limit.
+
+BUT…
+
+You can use it with third-party scripts/tools to enforce limits based on ActivityWatch’s logs.
+
+For example:
+
+* Monitor how long you use a game like Valorant
+* After 1 hour, a script closes it automatically (using data from ActivityWatch’s JSON logs)
+
+There’s an active community of developers using its **API** to build custom usage-based automation.
+
+---
+
+## ⚙️ Pros and Cons
+
+### ✅ Pros
+
+* Free & Open Source (FOSS)
+* Works offline, respects your privacy
+* Detailed usage analytics
+* Customizable and scriptable (for advanced users)
+
+### ❌ Cons
+
+* No built-in app blocking or time limits
+* UI is basic compared to commercial tools
+* Requires technical knowledge for advanced automation
+
+---
+
+## ✅ Ideal For:
+
+* People who want insight into their computer habits
+* Developers, freelancers, students tracking productivity
+* Privacy-conscious users (no cloud, no tracking)
+
+---
+
+Would you like help using ActivityWatch to build a custom usage-based time limiter or auto-shutdown system? I can guide you through that with code examples.
+
+
 Yes, it is **possible** to automatically **close Chrome** **only if YouTube** (not just Chrome itself) was used for **more than 2 hours total** — but you'll need to use a combination of:
 
 1. **ActivityWatch** – to **track** detailed browser usage (including time spent on YouTube specifically)
