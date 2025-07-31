@@ -189,3 +189,178 @@ Would you like me to help you:
 * Set up the Python environment?
 * Customize this script for another website or browser?
 
+
+Great! Let's set up everything step by step so you can **automatically close apps or limit websites (like YouTube or full browser usage)** to **2 hours per day** — no Microsoft account, no spyware, all local.
+
+---
+
+## ✅ OVERVIEW OF SETUP
+
+We’ll do this in 4 parts:
+
+| Step                                        | Goal                                         |
+| ------------------------------------------- | -------------------------------------------- |
+| 1. 🧩 Install ActivityWatch + Web Extension | To track website & app usage                 |
+| 2. 🐍 Install Python                        | To run the logic that enforces the limits    |
+| 3. 📜 Set up the Python Script              | To read data and close apps                  |
+| 4. ⏰ Automate the Script                    | To run it every X minutes via Task Scheduler |
+
+---
+
+## 🧩 STEP 1: Install ActivityWatch + Browser Extension
+
+### 🖥️ 1. Install ActivityWatch
+
+* Go to: [https://activitywatch.net/downloads/](https://activitywatch.net/downloads/)
+* Choose **Windows** version
+* Run the installer → it will launch automatically
+
+### 🌐 2. Install the Browser Extension
+
+For **Chrome** or any Chromium-based browser:
+
+* [ActivityWatch WebWatch Extension (Chrome)](https://chromewebstore.google.com/detail/activitywatch-webwatch/bpmibdpdmilmhdoogocmfcpmoapdffcb)
+* After installing:
+
+  * Click the extension → Enable it
+  * Allow permissions for website tracking
+
+> Optional for Firefox: [Webwatch for Firefox](https://addons.mozilla.org/en-US/firefox/addon/activitywatch-webwatch/)
+
+---
+
+## 🐍 STEP 2: Install Python
+
+### 📥 Install Python (if you don’t have it already)
+
+1. Download from: [https://www.python.org/downloads/windows/](https://www.python.org/downloads/windows/)
+2. During install:
+
+   * ✅ **Check “Add Python to PATH”**
+   * Click **Install Now**
+
+### 🧪 Test It
+
+Open Command Prompt (`Win + R`, type `cmd`) and run:
+
+```bash
+python --version
+```
+
+You should see something like `Python 3.x.x`
+
+---
+
+## 📜 STEP 3: The Python Script
+
+### 1. Open Notepad or VS Code and paste this script:
+
+```python
+import requests
+import datetime
+import os
+
+# ---- CONFIGURATION ----
+TARGET_APP = "chrome.exe"  # Change to app you want to limit
+LIMIT_SECONDS = 2 * 60 * 60  # 2 hours
+TARGET_DOMAIN = "youtube.com"  # Or use None to track all usage
+# ------------------------
+
+# Set up base URL
+base_url = 'http://localhost:5600/api/0'
+
+# Find browser bucket
+try:
+    buckets = requests.get(f'{base_url}/buckets').json()
+    web_bucket = next(b for b in buckets if 'aw-watcher-web' in b['id'])
+except Exception as e:
+    print("Could not connect to ActivityWatch. Is it running?")
+    exit(1)
+
+# Get today's timeframe
+now = datetime.datetime.now()
+start_time = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+end_time = now.isoformat()
+
+# Fetch events
+events = requests.get(
+    f'{base_url}/buckets/{web_bucket["id"]}/events',
+    params={'start': start_time, 'end': end_time}
+).json()
+
+# Calculate usage time
+total_seconds = 0
+for i in range(len(events) - 1):
+    event = events[i]
+    next_event = events[i + 1]
+    url = event['data'].get('url', '')
+
+    if TARGET_DOMAIN is None or TARGET_DOMAIN in url:
+        t1 = datetime.datetime.fromisoformat(event['timestamp'])
+        t2 = datetime.datetime.fromisoformat(next_event['timestamp'])
+        duration = (t2 - t1).total_seconds()
+        total_seconds += duration
+
+# Act on usage
+if total_seconds > LIMIT_SECONDS:
+    os.system(f"taskkill /f /im {TARGET_APP}")
+    print(f"✅ Closed {TARGET_APP} due to time limit ({total_seconds//60} min)")
+else:
+    print(f"⏱ {TARGET_DOMAIN or 'App'} usage: {total_seconds//60:.1f} minutes")
+```
+
+### 2. Save as:
+
+```plaintext
+youtube_limiter.py
+```
+
+---
+
+## ⏰ STEP 4: Automate It with Task Scheduler
+
+### 1. Open **Task Scheduler**
+
+* Press `Win + S` → search: `Task Scheduler` → open it
+
+### 2. Create a Basic Task
+
+* Click **“Create Basic Task”**
+* Name: `YouTube Limiter`
+* Trigger: **Daily** → Recur every 1 day
+* Action: **Start a program**
+
+  * **Program/script:** `python`
+  * **Add arguments:** `"C:\Path\To\youtube_limiter.py"` *(include quotes if there are spaces)*
+* Finish setup
+
+### Optional:
+
+* For better automation, set a trigger to **“Repeat every 30 minutes”** using **“Advanced Settings”** under “Triggers” tab (Edit after creation)
+
+---
+
+## ✅ You're Done!
+
+The script will now:
+
+* Track time spent on YouTube (or any app you configure)
+* Automatically close the app if time exceeds 2 hours
+
+---
+
+## 🔄 Want to Limit a Different App (e.g., Discord, a game)?
+
+Just change:
+
+```python
+TARGET_APP = "discord.exe"
+TARGET_DOMAIN = None  # No website tracking, just app
+```
+
+Or you can mix: limit total browser usage (`chrome.exe`) instead of specific domains.
+
+---
+
+Would you like me to generate a version that limits **total Chrome usage**, not just YouTube? Or want a version that handles **multiple apps** with separate limits?
+
