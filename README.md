@@ -1017,4 +1017,66 @@ pause
 
 ---
 
+Yes, you can absolutely **reuse your existing Task Scheduler task** with the updated `.vbs` script to **hide the console window** — you just need to change the task’s action to point to the `.vbs` instead of the `.bat`.
+
+---
+
+## ✅ Steps to Update the Task to Use the `.vbs` Script
+
+### 1. **Create the `run_hidden.vbs` file**
+
+Save this as `run_hidden.vbs` in the same folder:
+
+```vbscript
+Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run chr(34) & "C:\Users\melba\Downloads\run_screentime_limiter.bat" & Chr(34), 0
+Set WshShell = Nothing
+```
+
+### 2. **Open Task Scheduler**
+
+* Press `Win + R`, type `taskschd.msc`, and press Enter
+
+### 3. **Find your task**
+
+* Look for the task named **`UsageLimiter`**
+
+### 4. **Right-click → Properties**
+
+### 5. **Go to the "Actions" tab**
+
+* Select the existing action
+* Click **Edit**
+
+### 6. **Replace the Action with:**
+
+* **Program/script**: `wscript.exe`
+* **Add arguments**: `"C:\Users\melba\Downloads\run_hidden.vbs"`
+
+*Quotes are required if your path has spaces.*
+
+### 7. **Click OK → OK again**
+
+Now, your task will:
+
+* Run every 5 minutes (unchanged)
+* Execute the Python script via the `.bat` file (unchanged)
+* Do it **silently**, with no visible command window
+
+---
+
+### 🧪 To test it immediately:
+
+* Right-click the `UsageLimiter` task
+* Click **Run**
+
+You should see:
+
+* No window pop up
+* But `screen_time_log.txt` should still update
+
+---
+
+
+
 
