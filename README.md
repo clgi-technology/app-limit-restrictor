@@ -1077,6 +1077,65 @@ You should see:
 
 ---
 
+Great idea! You can create a **second scheduled task** that runs at midnight daily to reset your hosts file (and/or clean logs).
+
+---
+
+### Here's how to do it:
+
+#### 1. Create a separate batch script, e.g. `reset_hosts.bat`:
+
+```bat
+@echo off
+REM Adjust python path if needed
+SET PYTHON_PATH=C:\Users\melba\AppData\Local\Programs\Python\Python313\python.exe
+SET SCRIPT_PATH=C:\Users\melba\Downloads\reset_hosts.py
+
+REM Run the python reset script
+"%PYTHON_PATH%" "%SCRIPT_PATH%"
+```
+
+#### 2. Create the Python reset script `reset_hosts.py` (in `C:\Users\melba\Downloads`):
+
+```python
+import shutil
+from pathlib import Path
+
+HOSTS_PATH = r"C:\Windows\System32\drivers\etc\hosts"
+BACKUP_HOSTS_PATH = HOSTS_PATH + ".backup"
+
+def restore_hosts():
+    if Path(BACKUP_HOSTS_PATH).exists():
+        shutil.copy(BACKUP_HOSTS_PATH, HOSTS_PATH)
+        print("Hosts file restored from backup.")
+    else:
+        print("Backup hosts file not found.")
+
+if __name__ == "__main__":
+    restore_hosts()
+```
+
+---
+
+#### 3. Create a task in Task Scheduler to run `reset_hosts.bat` daily at midnight
+
+You can do this from an **elevated Command Prompt or PowerShell**:
+
+```powershell
+schtasks /create /tn "ResetHostsFile" /tr "C:\Users\melba\Downloads\reset_hosts.bat" /sc daily /st 00:00 /rl highest /f
+```
+
+---
+
+### Summary:
+
+* Your main usage limiter script still runs every 5 minutes.
+* The reset task runs once at midnight to restore the hosts file (unblock domains).
+* You can expand `reset_hosts.py` to also clean logs or perform other maintenance.
+
+---
+
+If you'd like, I can help you create a **single script** that does both (reset + clean logs) or help automate this whole setup — just ask!
 
 
 
